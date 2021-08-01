@@ -1,0 +1,36 @@
+[Unit]
+Description=RTL_433 service script
+StartLimitIntervalSec=5
+Documentation=https://github.com/merbanan/rtl_433/README.md
+
+[Service]
+
+
+#Environment='RTL_433_OPTIONS= -v -F influx://influx.wimsey.co/write?db=%H''
+#ExecStart=/usr/local/bin/rtl_433 $RTL_433_OPTIONS
+
+#ExecStart=/usr/local/bin/rtl_433 -F influx://influx6.wimsey.co:8086/write?db=%H
+#ExecStart=/usr/local/bin/rtl_433 -H 120 -f 433.92M -f 915M -F kv -F influx://192.168.40.16:8086/write?db=%H
+#ExecStart=/usr/local/bin/rtl_433 -H 120 -f 433.92M -f 915M -F kv -F influx://influx4.wimsey.co:8086/write?db=sensors
+ExecStart=/usr/local/bin/rtl_433 -H 120 -f 433.92M -f 915M -F kv -F influx://localhost:8086/write?db=rtl_433
+
+# Restart script if stopped
+Restart=always
+# Wait 30s before restart
+RestartSec=30s
+
+# Tag things in the log
+# View with: sudo journalctl -f -u rtl_433 -o cat
+SyslogIdentifier=rtl_433
+
+# modify via a dropin to use a dedicated log file for StdOut and StdErr.
+# NOTE: only works in systemd v236+
+#       Debain "stretch" includes v232, "buster" includes v239
+# Note also the user must be able to create the file and logrotate must be amended to rote the log.
+#StandardOutput=file:/var/log/rtl_433.log
+
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

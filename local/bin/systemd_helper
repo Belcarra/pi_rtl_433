@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# 
+
+
+
+ARG0=$(basename $0)
+
+SERVICE=$(expr ${ARG0} : "\(.*\)_.*" )
+OP=$(expr ${ARG0} : ".*_\(.*\)" )
+
+echo SERVICE: $SERVICE
+echo OP: $OP
+
+set -x
+
+case ${OP} in
+	status)
+		systemctl status ${SERVICE}
+		;;
+	log)
+		journalctl -f -u ${SERVICE} -o cat
+		;;
+
+	init)
+		systemctl start ${SERVICE}
+		systemctl enable ${SERVICE}
+		;;
+	reload)
+		systemctl stop ${SERVICE}
+		systemctl daemon-reload; 
+		systemctl start ${SERVICE}
+		journalctl -f -u ${SERVICE} -o cat
+		;;
+	edit)
+		vi /lib/systemd/system/${SERVICE}.service
+		;;
+esac
+
+exit
+systemctl stop rtl_433.service; 
+systemctl daemon-reload; 
+systemctl start rtl_433.service; 
+journalctl -f -u rtl_433 -o cat
