@@ -1,0 +1,89 @@
+#
+# rtl_433 / telegraph 
+# Capture 433/915 Mhz sensor data and forward to influxdb.
+#
+# Mon Aug 02 17:44:51 PDT 2021 
+# Stuart Lynne
+# vim: tabstop=4 shiftwidth=4 expandtab
+# 
+# This docker-compose will create a multi-container Docker application with:
+#
+#   rtl_433 - capture sensor data from 433 Mhz and 915 Mhz, forward to telegraf
+#   telegraf - forward data to influxdb, fails gracefully with buffering.
+#
+# This is intended for deployment in a limited environment system, e.g. Pi Zero W
+# that only captures and forwards data. We forward via telegraf to handle network
+# or influxdb server outages gracefully.
+#
+version: '3.6'
+
+services:
+    rtl_433_telegraf:
+        image: hertzg/rtl_433:latest
+        container_name: rtl_433
+        restart: unless-stopped
+        devices:
+          - /dev/bus/usb:/dev/bus/usb
+        command:
+          # -H 120 - set hop time
+          - '-H'
+          - '120'
+          # -f 433.92M | 915M
+          - '-f'
+          - '433.92M'
+          #- '-f' 
+          #- '915M'
+          # -F kv | json
+          - '-F'
+          - 'json'
+          # -F influx://localhost:8086 ...
+          - '-F'
+          #- 'influx://192.168.40.16:8086/write?db=test1'
+          - 'influx://telegraf:8086/write?db=whiskey'
+          # -M time:usec - time to micro-second
+          - '-M'
+          - 'time:usec'
+          # -M level - rssi included
+          - '-M'
+          - 'level'
+          # -M stats:1 - periodic stats for seen protocols
+          - '-M'
+          - 'stats:1'
+          # -M protocol - protocol included
+          - '-M' 
+          - 'protocol'
+          # -R 12 Oregon
+          - '-R'
+          - '12'
+          # -R 20 Ambient TFA
+          - '-R'
+          - '20'
+          # -R 40 - Accurite 5n1
+          - '-R'
+          - '40'
+          # -R 41 - Accurite 986
+          - '-R'
+          - '41'
+          # - R 112 - Ambient TX-8300
+          - '-R'
+          - '112'
+        # wait until telegraf has started
+        depends_on:
+          - telegraf
+
+    telegraf:
+        container_name: telegraf
+        hostname: telegraf
+        image: telegraf
+        volumes:
+            - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
+        environment:
+            INFLUXURL: ${INFLUXURL}
+            INFLUXDB: ${INFLUXDB}
+            
+        command:
+            - '--config'
+            - '/etc/telegraf/telegraf.conf'
+        dns:
+            - ${LOCALHOSTDNS}
+

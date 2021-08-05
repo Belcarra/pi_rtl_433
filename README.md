@@ -1,81 +1,126 @@
 # pitrtl - Raspberry PI RTL SDR monitor
 # Fri Jul 30 13:54:38 PDT 2021
 
-This documents implementing an RTL SDR monitor on a Raspberry PI Zero W.
-
+This documents implementing an RTL SDR monitor on a Raspberry PI Zero W using docker compose.
 
 Goal:
 - low cost
-- feed data to remote influxdb
 - use telegraf to manage influxdb server outages
+- feed data to remote influxdb
+- easy deployment using docker-compose
 
 Hardware:
 - Raspberry PI Zero W
 - Nooelec NESDR Mini 
 - 5V Mini-UPS
 
+## Container Configuration
 
-## Pi Zero W Monitor
+### Telegraf
+Telegraf is configured using */etc/telegraf/telegraf.conf* file. This can be modified
+using environment variables.
+
+Currently:
+    - INFLUXURL - address of the influxdb server
+    - INFLUXDB - name of the influxdb database to use
+
+#### Database
+
+Typically INFLUXDB (set in .env) would be *sensors*.
+
 
 ### rtl_433
 
-Use rtl_433 to capture data, forward to influx://localhost:8086
+*rtl_433* is configured either through the */etc/rtl_433/rtl_433.conf* file. This can be
+modified directly. Or either eliminated or set up as a minimal configuration and the 
+required protocols and frequencies configured through the command arguements in the 
+*docker-compose.yml* file.
 
-- -H 120 - two minute hop time between frequencies
-- -f 433.92M - standard 433 Mhz frequency
-- -f 915M - standard 915 Mhz frequence
+As distributed the rtl_433.conf has all protocols commented out to minimize overhead. 
+Set required protocols via the command line.
 
+#### docker-compose.yml
 
-```
-ExecStart=/usr/local/bin/rtl_433 -H 120 -f 433.92M -f 915M -F kv -F influx://localhost:8086/write?db=rtl_433
-```
-
-### telegraf
-
-Started in systemd service file.
+rtl_433 protocol and frequency options can be set in *docker-compose.yml*:
 
 ```
-ExecStart=/usr/bin/telegraf -config /etc/telegraf/telegraf.conf 
+    rtl_433:
+        image: hertzg/rtl_433:latest
+        container_name: rtl_433
+        restart: unless-stopped
+        devices:
+          - /dev/bus/usb:/dev/bus/usb
+        command:
+          # -f 433.92M | 915M
+          - '-f' 
+          - '915M'
+          - '-f'
+          - '433.92M'
+          # -F kv | json
+          - '-F'
+          - 'json'
+          # -F influx://localhost:38186 ...
+          - '-F'
+          - 'influx://localhost:38186/write?db=whiskey'
+          # -M time:usec - time to micro-second
+          - '-M'
+          - 'time:usec'
+          # -M level - rssi included
+          - '-M'
+          - 'level'
+          # -M stats:1 - periodic stats for seen protocols
+          - '-M'
+          - 'stats:1'
+          # -M protocol - protocol included
+          - '-M' 
+          - 'protocol'
+          # -H 120 - set hop time
+          - '-H'
+          - '120'
+          # -R 12 Oregon
+          - '-R'
+          - '12'
+          # -R 20 Ambient TFA
+          - '-R'
+          - '20'
+          # -R 40 - Accurite 5n1
+          - '-R'
+          - '40'
+          # -R 41 - Accurite 986
+          - '-R'
+          - '41'
+          # - R 112 - Ambient TX-8300
+          - '-R'
+          - '112'
+        # wait until telegraf has started
+        depends_on:
+          - telegraf
 ```
 
-Conf.
+
+## Network
+
+Each *container* acts as a separate *host* for networking purposes. For example:
+
+| hostname | ip address |
+| -------- | ---------- |
+| telegraf | 172.19.0.2 |
+| rtl_433  | 172.19.0.3 |
+
+Each container is configured independantly as a *host*. 
+
+Typically INFLUXURL (set in .env) would be *http://influxhost.mydomain.com:8086*
 
 ```
-[[inputs.influxdb_listener]]
-  ## Address and port to host InfluxDB listener on
-  service_address = ":8086"
-
-  ## maximum duration before timing out read of the request
-  read_timeout = "10s"
-  ## maximum duration before timing out write of the response
-  write_timeout = "10s"
-
-  ## Maximum allowed HTTP request body size in bytes.
-  ## 0 means to use the default of 32MiB.
-  max_body_size = "32MiB"
-
+    rtl_433 -> telegraf:8086 -> telegraf -> influxhost.mydomain.com:8086 -> influxdb host
 ```
 
-```
-# Configuration for sending metrics to InfluxDB
-[[outputs.influxdb]]
-  ## The full HTTP or UDP URL for your InfluxDB instance.
-  ##
-  ## Multiple URLs can be specified for a single cluster, only ONE of the
-  ## urls will be written to each interval.
-  # urls = ["unix:///var/run/influxdb.sock"]
-  # urls = ["udp://127.0.0.1:8089"]
-  urls = ["http://influx4.wimsey.co:8086"]
+Because *NAT reflection* is not implemented in most NAT routers, when testing this it
+may be neccessary to set the local IP address within the same host or local network.
 
-  ## The target database for metrics; will be created as needed.
-  ## For UDP url endpoint database needs to be configured on server side.
-  # database = "telegraf"
-  database = "rtl_433"
+Local use, set in .env:
 
-  ## The value of this tag will be used to determine the database.  If this
-  ## tag is not set the 'database' option is used as the default.
-  # database_tag = ""
-
-```
+- production: INFLUXURL=http://influx4.wimsey.co:8086
+- test: INFLUXURL=http://192.168.40.16:8086
 
 
