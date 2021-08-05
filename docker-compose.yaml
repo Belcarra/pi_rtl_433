@@ -25,46 +25,37 @@ services:
         devices:
           - /dev/bus/usb:/dev/bus/usb
         command:
-          # -H 120 - set hop time
+          # -H 120 -f 433.92M -f 915M -F json -F influx://telegraf:8086/write?db=sensors -M time:usec -M level -M stats:1 -M protocol -R 12 -R 40 -R 41 -R 112
+          # set hop time and frequencies
           - '-H'
           - '120'
-          # -f 433.92M | 915M
           - '-f'
           - '433.92M'
-          #- '-f' 
-          #- '915M'
-          # -F kv | json
+          - '-f' 
+          - '915M'
+          # outputs, stdout json, and influx
           - '-F'
           - 'json'
-          # -F influx://localhost:8086 ...
           - '-F'
-          #- 'influx://192.168.40.16:8086/write?db=test1'
-          - 'influx://telegraf:8086/write?db=whiskey'
-          # -M time:usec - time to micro-second
+          - 'influx://telegraf:8086/write?db=sensors'
+          # meta settings, time to micro-second, include rssi, periodic stats for seen protocols
           - '-M'
           - 'time:usec'
-          # -M level - rssi included
           - '-M'
           - 'level'
-          # -M stats:1 - periodic stats for seen protocols
           - '-M'
           - 'stats:1'
-          # -M protocol - protocol included
-          - '-M' 
-          - 'protocol'
-          # -R 12 Oregon
+          #- '-M' 
+          #- 'protocol'
+          # enable protocols: 12 Oregon, 20 Ambient TFA, 40 - Accurite 5n1, 41 - Accurite 986, 112 - Ambient TX-8300
           - '-R'
           - '12'
-          # -R 20 Ambient TFA
           - '-R'
           - '20'
-          # -R 40 - Accurite 5n1
           - '-R'
           - '40'
-          # -R 41 - Accurite 986
           - '-R'
           - '41'
-          # - R 112 - Ambient TX-8300
           - '-R'
           - '112'
         # wait until telegraf has started
@@ -78,12 +69,29 @@ services:
         volumes:
             - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
         environment:
-            INFLUXURL: ${INFLUXURL}
-            INFLUXDB: ${INFLUXDB}
+            #
+            # These are passed to telegraf to set the url for outpus.influxdb and the database to use. 
+            # See telegraf/telegraf.conf 
+            #
+            # [[outputs.influxdb]]
+            #      urls = ["${INFLUXURL}"]
+
+            # For testing
+            # INFLUXURL: 'http://192.168.40.16:8086'
+
+            # For production
+            INFLUXURL: 'http://influx4.wimsey.co:8086'
+
+            # Database to use with influxdb
+            # INFLUXDB: 'whiskey'
+            INFLUXDB: 'sensors'
+
+            #INFLUXURL: ${INFLUXURL}
+            #INFLUXDB: ${INFLUXDB}
             
         command:
             - '--config'
             - '/etc/telegraf/telegraf.conf'
-        dns:
-            - ${LOCALHOSTDNS}
+        #dns:
+        #    - ${LOCALHOSTDNS}
 
