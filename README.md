@@ -123,4 +123,18 @@ Local use, set in .env:
 - production: INFLUXURL=http://influx4.wimsey.co:8086
 - test: INFLUXURL=http://192.168.40.16:8086
 
+## Install Docker on Raspbian
+```
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh ./get-docker.sh
+```
+### Docker - convience script
+```
+pip3 docker-compose
+```
+
+### Docker Compose - pip3
+
+
+
 
