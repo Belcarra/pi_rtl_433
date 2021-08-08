@@ -18,10 +18,31 @@
 version: '3.6'
 
 services:
-    rtl_433_telegraf:
-        image: hertzg/rtl_433:alpine-3.12-latest
+
+    # Run rtl_433 looking at specific frequencies for specific protocols. Forward
+    # received data to influx://telegraf:8086/write?db=sensors.
+    #
+    # images
+    # 2021-08-06
+    # There are two extant problems:
+    #    1. alpine 3.13 and newer, Assertion failed: clock_gettime(1, tp) == 0 (libusbi.h: usbi_get_monotonic_time: 497)
+    #    2. rtl_433, does not exit on async read failure, fixed 2021-01 approx
+    rtl_433:
         container_name: rtl_433
-        restart: unless-stopped
+        #image: hertzg/rtl_433:alpine-3.12-latest
+        #image: hertzg/rtl_433:alpine-3.13-latest
+        #image: hertzg/rtl_433:alpine-latest
+        #image: dwinks/rtl_433_docker - fails armv7
+        #image: lettore/rtl_433 - fails armv7
+        #image: kpine/rtl433
+        #image: bademux/rtl_433tomqtt
+        image: local/rtl_433
+        environment:
+           # timezone
+           TIMEZONE: "America/Vancouver"
+           TZ: "America/Vancouver"
+        #restart: unless-stopped
+        restart: always
         devices:
           - /dev/bus/usb:/dev/bus/usb
         command:
@@ -65,10 +86,13 @@ services:
     telegraf:
         container_name: telegraf
         hostname: telegraf
-        image: telegraf
+        #image: telegraf
+        image: mik9/telegraf:armv6
         volumes:
             - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
         environment:
+            # timezone
+            TZ: "America/Vancouver"
             #
             # These are passed to telegraf to set the url for outpus.influxdb and the database to use. 
             # See telegraf/telegraf.conf 
@@ -88,6 +112,7 @@ services:
 
             #INFLUXURL: ${INFLUXURL}
             #INFLUXDB: ${INFLUXDB}
+            DEBGUON: "false"
             
         command:
             - '--config'
