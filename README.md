@@ -165,6 +165,14 @@ pip3 docker-compose
 
 ### Docker Compose - pip3
 
+## Logs
 
+Add */etc/docker/daemon.json* file:
+```
+{
+  "log-driver": "json-file",
+  "log-opts": {"max-size": "10m", "max-file": "3"}
+}
+```
 
 
