@@ -45,40 +45,11 @@ services:
         restart: always
         devices:
           - /dev/bus/usb:/dev/bus/usb
-        command:
-          # -H 120 -f 433.92M -f 915M -F json -F influx://telegraf:8086/write?db=sensors -M time:usec -M level -M stats:1 -M protocol -R 12 -R 40 -R 41 -R 112
-          # set hop time and frequencies
-          - '-H'
-          - '120'
-          - '-f'
-          - '433.92M'
-          - '-f' 
-          - '915M'
-          # outputs, stdout json, and influx
-          - '-F'
-          - 'json'
-          - '-F'
-          - 'influx://telegraf:8086/write?db=sensors'
-          # meta settings, time to micro-second, include rssi, periodic stats for seen protocols
-          - '-M'
-          - 'time:usec'
-          - '-M'
-          - 'level'
-          - '-M'
-          - 'stats:1'
-          #- '-M' 
-          #- 'protocol'
-          # enable protocols: 12 Oregon, 20 Ambient TFA, 40 - Accurite 5n1, 41 - Accurite 986, 112 - Ambient TX-8300
-          - '-R'
-          - '12'
-          - '-R'
-          - '20'
-          - '-R'
-          - '40'
-          - '-R'
-          - '41'
-          - '-R'
-          - '112'
+
+         # outputs, stdout json, and influx
+         # meta settings, time to micro-second, include rssi, periodic stats for seen protocols
+         # enable protocols: 12 Oregon, 20 Ambient TFA, 40 - Accurite 5n1, 41 - Accurite 986, 113 - Ambient TX-8300, 165 - TFA
+        command: -f 915M -F json -F 'influx://telegraf:8086/write?db=sensors' -M 'time:usec' -M 'level' -M 'stats:1' -M 'protocol' -R 113 
         # wait until telegraf has started
         depends_on:
           - telegraf
@@ -90,6 +61,7 @@ services:
         image: mik9/telegraf:armv6
         volumes:
             - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
+        restart: always
         environment:
             # timezone
             TZ: "America/Vancouver"
