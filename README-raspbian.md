@@ -7,12 +7,12 @@ There are three different issues that make getting an *rtl\_433* / *telegraf* co
 working on *Raspbian*:
 
 1. alpine:3.13 and newer cause rtl\_433 to crash.
-2. rtl_433 older images have problems exiting and restarting on an async timeout.
+2. older versions of rtl\_433 problems exiting and restarting on an async timeout.
 3. finding a telegraf image that works correctly with Raspbian.
 
 ## alpine
 
-A Dockerfile and build for an alpine:3.12 image that will work correctly for rtl\_433 on Raspbian.
+See the alpine directory for a Dockerfile and build for an alpine:3.12 image that will work correctly for rtl\_433 on Raspbian.
 
 There are two issues that need to be dealt with:
 
@@ -30,7 +30,7 @@ docker build -t local/alpine --build-arg TIMEZONE_ARG="America/Vancouver"  .
 ```
 ## rtl\_433
 
-A Dockerfile and build for an rtl\_433 image that works correctly on Raspbian.
+See the rtl\_433 directory for a Dockerfile and build for an rtl\_433 image that works correctly on Raspbian.
 
 Versions of rtl\_433 prior to (about) 2021-02 have a bug that prevents rtl\_433
 from exiting cleanly on some async timeouts. Current (2021-02 and newer) versions

@@ -1,9 +1,12 @@
 #!/bin/bash
+# build script for raspbian
+# 
 
-
-
-#(set -x; pushd alpine; ./build.sh)
-#(set -x; pushd; ./build.sh)
+# Build the local versions of alpine and rtl_433
+# See README-raspbian.md for details on why these are required.
+#
+(set -x; pushd alpine; ./build.sh)
+(set -x; pushd rtl_433; ./build.sh)
 
 set -x
 . ./config.env

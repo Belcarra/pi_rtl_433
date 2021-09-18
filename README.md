@@ -2,49 +2,46 @@
 # Sat Aug 07 23:28:01 PDT 2021 
 # Stuart.Lynne@belcarra.com
 # 
+
 This documents implementing an RTL 433 monitor on a Raspberry PI Zero W using docker compose.
 
-Goal:
-- low cost
-- use telegraf to manage influxdb server outages
-- feed data to remote influxdb
-- easy deployment using docker-compose
+We implement a simple container stack with two services:
+
+- rtl\_433 - capture sensor data using a low cost Software Defined radio
+- telegraf - buffer sensor data from rtl\_433 being sent to a remove influxdb server
 
 Hardware:
 - Raspberry PI Zero W
 - Nooelec NESDR Mini or equivalent
 - 5V Mini-UPS
 
-## Known Issues
-There are two extant problems:
-1. alpine 3.13 and newer, Assertion failed: clock\_gettime(1, tp) == 0 (libusbi.h: usbi\_get\_monotonic\_time: 497)
-2. rtl\_433, does not exit on async read failure, fixed 2021-01 approx
+### Configuration
+See the config.env file:
 
-We need to build using the older *alpine:3.12* image and the latest *rtl_433* release.
+- TZ - timezone
+- INFLUXURL - URL to the influxdb server
+- INFLUXDB - database name to use when sending data to the influxdb server
+- RTL\_OPTIONS - configuration options for rtl\_433
+- RTL\_PROTOCOLS - frequency and protocols for rtl\_433 to use
 
-This project will build two images that are then used by a docker-compose file to implement 
-a container stack.
+```
+export TZ="America/Vancouver"
+export INFLUXURL="http://influx4.wimsey.co:8086"
+export INFLUXDB="sensors"
+export RTL_OPTIONS="-F json -F 'influx://telegraf:8086/write?db=${INFLUXDB}' -M 'time:usec' -M 'level' -M 'stats:1' -M 'protocol' -R 113"
+```
 
-- local/alpine - image based on arm32v6/alpine:3.12
-- local/rtl\_433 - image based on local/alpine with merbanana/rtl_433 installed
-- pi_rtl_433 - container built to configure telegraf and rtl\_433 for local use
+RTL protocols for 915Mhz Ambient TX-8300
+```
+# enable protocols: 113 - Ambient TX-8300
+- export RTL_PROTOCOLS="-f 915M -R 113"
+```
 
-
-# local/alpine
-A local alpine:3.12 image created for rtl\_433 to use. For ease in testing some additional
-utilities (vim, bash, busybox-extras, timezone) are included.
-
-# local/rtl\_433
-A local rtl\_433 image is created for the pi\_rtl\_433 stack to use. This uses builds
-on local/alpine to add the latest rtl_433 project and it's requirements.
-
-#### alpine:3.12 required
-
-#### rtl\_433:latest must be newer than 2021-02
-A bug in rtl\_433 that prevented rtl\_433 from exiting on some async reads was fixed 2021-02. 
-
-
-
+RTL protocols for 433Mhz, various
+```
+# enable protocols: 12 Oregon, 20 Ambient TFA, 40 - Accurite 5n1, 41 - Accurite 986, 165 - TFA
+export RTL_PROTOCOLS="-R 12 -R 20 -R 40 -R 41 -R 165'"
+```
 
 ### Telegraf
 Telegraf is configured using */etc/telegraf/telegraf.conf* file. This can be modified
@@ -68,64 +65,6 @@ required protocols and frequencies configured through the command arguements in 
 
 As distributed the rtl\_433.conf has all protocols commented out to minimize overhead. 
 Set required protocols via the command line.
-
-#### docker-compose.yml
-
-rtl\_433 protocol and frequency options can be set in *docker-compose.yml*:
-
-```
-    rtl\_433:
-        image: hertzg/rtl\_433:latest
-        container\_name: rtl\_433
-        restart: unless-stopped
-        devices:
-          - /dev/bus/usb:/dev/bus/usb
-        command:
-          # -f 433.92M | 915M
-          - '-f' 
-          - '915M'
-          - '-f'
-          - '433.92M'
-          # -F kv | json
-          - '-F'
-          - 'json'
-          # -F influx://localhost:38186 ...
-          - '-F'
-          - 'influx://localhost:38186/write?db=whiskey'
-          # -M time:usec - time to micro-second
-          - '-M'
-          - 'time:usec'
-          # -M level - rssi included
-          - '-M'
-          - 'level'
-          # -M stats:1 - periodic stats for seen protocols
-          - '-M'
-          - 'stats:1'
-          # -M protocol - protocol included
-          - '-M' 
-          - 'protocol'
-          # -H 120 - set hop time
-          - '-H'
-          - '120'
-          # -R 12 Oregon
-          - '-R'
-          - '12'
-          # -R 20 Ambient TFA
-          - '-R'
-          - '20'
-          # -R 40 - Accurite 5n1
-          - '-R'
-          - '40'
-          # -R 41 - Accurite 986
-          - '-R'
-          - '41'
-          # - R 112 - Ambient TX-8300
-          - '-R'
-          - '112'
-        # wait until telegraf has started
-        depends\_on:
-          - telegraf
-```
 
 
 ## Network
@@ -152,6 +91,24 @@ Local use, set in .env:
 
 - production: INFLUXURL=http://influx4.wimsey.co:8086
 - test: INFLUXURL=http://192.168.40.16:8086
+
+
+## Install - Raspbian
+
+This will build the appropriate local images and then compose the containers for raspbian.
+
+```
+build-raspbian.sh
+```
+
+This build can take some time (minutes to hours for Pi 4 or Pi Zero).
+
+## Install - generic
+
+This will compose the contains for generic system (no local images):
+```
+build.sh
+```
 
 ## Install Docker on Raspbian
 ```
