@@ -49,7 +49,7 @@ services:
          # outputs, stdout json, and influx
          # meta settings, time to micro-second, include rssi, periodic stats for seen protocols
          # enable protocols: 12 Oregon, 20 Ambient TFA, 40 - Accurite 5n1, 41 - Accurite 986, 113 - Ambient TX-8300, 165 - TFA
-        command: -f 915M -F json -F 'influx://telegraf:8086/write?db=sensors' -M 'time:usec' -M 'level' -M 'stats:1' -M 'protocol' -R 113 
+        command: -F json -F 'influx://telegraf:8086/write?db=sensors' -M 'time:usec' -M 'level' -M 'stats:1' -M 'protocol' -R 12 -R 20 -R 40 -R 41 -R 165
         # wait until telegraf has started
         depends_on:
           - telegraf
