@@ -19,37 +19,22 @@ version: '3.6'
 
 services:
 
-    # Run rtl_433 looking at specific frequencies for specific protocols. Forward
-    # received data to influx://telegraf:8086/write?db=sensors.
+    # See config.env and build*.sh to set configuration and image environement variables
     #
-    # images
-    # 2021-08-06
-    # There are two extant problems:
-    #    1. alpine 3.13 and newer, Assertion failed: clock_gettime(1, tp) == 0 (libusbi.h: usbi_get_monotonic_time: 497)
-    #    2. rtl_433, does not exit on async read failure, fixed 2021-01 approx
     rtl_433:
         container_name: rtl_433
-        #image: hertzg/rtl_433:alpine-3.12-latest
-        #image: hertzg/rtl_433:alpine-3.13-latest
-        #image: hertzg/rtl_433:alpine-latest
-        #image: dwinks/rtl_433_docker - fails armv7
-        #image: lettore/rtl_433 - fails armv7
-        #image: kpine/rtl433
-        #image: bademux/rtl_433tomqtt
-        image: local/rtl_433
+        image: ${RTL_433_IMAGE}
         environment:
            # timezone
-           TIMEZONE: "America/Vancouver"
-           TZ: "America/Vancouver"
-        #restart: unless-stopped
+           TIMEZONE: ${TZ}
+           TZ: ${TZ}
         restart: always
         devices:
           - /dev/bus/usb:/dev/bus/usb
 
-         # outputs, stdout json, and influx
-         # meta settings, time to micro-second, include rssi, periodic stats for seen protocols
-         # enable protocols: 12 Oregon, 20 Ambient TFA, 40 - Accurite 5n1, 41 - Accurite 986, 113 - Ambient TX-8300, 165 - TFA
-        command: -F json -F 'influx://telegraf:8086/write?db=sensors' -M 'time:usec' -M 'level' -M 'stats:1' -M 'protocol' -R 12 -R 20 -R 40 -R 41 -R 165
+         # See config.env
+        command: ${RTL_OPTIONS} ${RTL_FREQ} ${RTL_PROTOCOLS}
+
         # wait until telegraf has started
         depends_on:
           - telegraf
@@ -57,33 +42,15 @@ services:
     telegraf:
         container_name: telegraf
         hostname: telegraf
-        #image: telegraf
-        image: mik9/telegraf:armv6
+        image: ${TELEGRAF_IMAGE}
         volumes:
-            - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
+            - ./etc/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
         restart: always
         environment:
             # timezone
-            TZ: "America/Vancouver"
-            #
-            # These are passed to telegraf to set the url for outpus.influxdb and the database to use. 
-            # See telegraf/telegraf.conf 
-            #
-            # [[outputs.influxdb]]
-            #      urls = ["${INFLUXURL}"]
-
-            # For testing
-            # INFLUXURL: 'http://192.168.40.16:8086'
-
-            # For production
-            INFLUXURL: 'http://influx4.wimsey.co:8086'
-
-            # Database to use with influxdb
-            # INFLUXDB: 'whiskey'
-            INFLUXDB: 'sensors'
-
-            #INFLUXURL: ${INFLUXURL}
-            #INFLUXDB: ${INFLUXDB}
+            TZ: ${TZ}
+            INFLUXURL: ${INFLUXURL}
+            INFLUXDB: ${INFLUXDB}
             DEBGUON: "false"
             
         command:
